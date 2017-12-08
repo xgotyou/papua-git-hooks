@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+
+require 'asana'
+
+ASANA_WORKSPACE = 'RBU new website'
+TASK_INITIAL_STATE = 'planned'
+TASK_TARGET_STATE = 'development'
+PREFIX = '[Asana]'
+
+client = Asana::Client.new do |c|
+  c.authentication :access_token, '0/575a63469f9f126097f3996e0c0c5f38'
+end
+
+workspaces = client.workspaces.find_all.select { |ws| ws.name == ASANA_WORKSPACE }
+if workspaces.empty?
+  puts "#{PREFIX} Unable to find specified workspace in Asana (#{ASANA_WORKSPACE})"
+  exit 1
+end
+
+feature_name = ARGV[0]
+unless feature_name.match /\A\d+\z/
+  puts "#{PREFIX} Feature name format not match format of Asana task id (should be digits only)." 
+  exit 1 
+end
+
+begin
+  task = client.tasks.find_by_id(feature_name)
+rescue
+  puts "#{PREFIX} Unable to find task with id (#{feature_name}). Please check. Feature name should be Asana task id."
+  exit 1
+end
+
+memberships = task.memberships.select { |m| m['section']['name'].match /(#{TASK_INITIAL_STATE})|(#{TASK_TARGET_STATE})/i }
+
+if memberships.empty?
+  puts "#{PREFIX} Corresponding task should be in planned or development state."
+  exit 1
+end
+
+membership = memberships.first
+
+unless membership['section']['name'] == TASK_TARGET_STATE
+  project = client.projects.find_by_id(memberships.first['project']['id'])
+  target_section = project.sections.select { |s| s.name.match /#{TASK_TARGET_STATE}/i }.first
+
+  unless target_section
+    puts "#{PREFIX} Column #{TASK_TARGET_STATE} not present in project #{project.name}" 
+  end
+
+  task.remove_project(project: project.id)
+  task.add_project(project: project.id, section: target_section.id)
+
+  puts "#{PREFIX} Corresponding task successefully moved to #{TASK_TARGET_STATE} state."
+end
