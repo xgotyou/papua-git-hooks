@@ -9,7 +9,7 @@ module Papua
 
     def self.open_task(id)
       client = Asana::Client.new do |c|
-        c.authentication :access_token, '0/575a63469f9f126097f3996e0c0c5f38'
+        c.authentication :access_token, self.token
       end
 
       begin
@@ -18,6 +18,12 @@ module Papua
         puts "Unable to find task with id (#{feature_name}). Please check. Feature name should be Asana task id."
         exit 1
       end
+    end
+
+    private
+
+    def self.token
+      ENV['asana_token']
     end
   end
 end
