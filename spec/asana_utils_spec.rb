@@ -20,12 +20,15 @@ describe 'AsanaUtile' do
   end
 
   it "should move task to specified state" do
+    asana_config = Minitest::Mock.new
+    asana_config.expect :authentication, true, [:access_token, token]
+
     asana_client = Minitest::Mock.new
-    asana_client.expect :authentication, nil, [:access_token, token]
     asana_client.expect :tasks, tasks = Minitest::Mock.new
+
     tasks.expect :find_by_id, {}, [task_id]
 
-    Asana::Client.stub :new, asana_client do
+    Asana::Client.stub :new, asana_client, asana_config do
       Papua::AsanaUtils.open_task(task_id)
     end
 
